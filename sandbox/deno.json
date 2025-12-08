@@ -21,6 +21,9 @@
     "build": "deno compile --unstable-sloppy-imports --unstable-worker-options --allow-ffi --allow-env --allow-sys --allow-read --allow-net --allow-run --allow-write --include worker.ts --include integrationProxyWorker.ts main.ts"
   },
   "lint": {
-    "exclude": ["ecosystem.config.js"]
+    "exclude": ["ecosystem.config.js"],
+    "rules": {
+      "exclude": ["require-await"]
+    }
   }
 }

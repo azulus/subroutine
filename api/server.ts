@@ -12,6 +12,7 @@ import { testMockMcpServers } from "./agent/agent-mock-mcp-tester.ts";
 import { coerceToSchema } from "./agent/agent-type-coercer.ts";
 import { createModel } from "./agent/utils/providers.ts";
 import { Capability } from "./agent/utils/types.ts";
+import { bootstrapValidator } from "./agent/validation/validator.ts";
 import { auth } from "./auth.ts";
 import { getConfig } from "./config/loader.ts";
 import { initializeDatabase } from "./db/index.ts";
@@ -1620,6 +1621,12 @@ const initialize = async () => {
   logger.info(`MCP OAuth endpoint available at http://localhost:${PORT}/@{orgSlug}`);
   logger.info(`MCP legacy endpoint available at http://localhost:${PORT}/mcp-legacy`);
   logger.info(`OpenAPI spec available at http://localhost:${PORT}/openapi.json`);
+
+  process.nextTick(() => {
+    logger.info("Bootstrapping validator in background...");
+    bootstrapValidator();
+    logger.info("Validator bootstrapped.");
+  });
 };
 
 initialize();

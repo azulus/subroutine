@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Project } from "ts-morph";
 import { rules } from "./rules/index.ts";
-import type { ValidationResult, ValidationError, ValidationContext } from "./types.ts";
+import type { ValidationContext, ValidationError, ValidationResult } from "./types.ts";
 
 const project = new Project({
   useInMemoryFileSystem: true,
@@ -11,10 +11,11 @@ const project = new Project({
   },
 });
 
-export const checkCustomRules = (
-  code: string,
-  context?: ValidationContext
-): ValidationResult => {
+export const bootstrapASTChecker = (): void => {
+  // just a placeholder to load this file
+};
+
+export const checkCustomRules = (code: string, context?: ValidationContext): ValidationResult => {
   const filename = `${randomUUID()}.ts`;
   const sourceFile = project.createSourceFile(filename, code);
 

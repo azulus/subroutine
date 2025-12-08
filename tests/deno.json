@@ -27,5 +27,10 @@
   },
   "compilerOptions": {
     "strict": true
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["require-await"]
+    }
   }
 }

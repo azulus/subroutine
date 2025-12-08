@@ -39,6 +39,8 @@ type InspectResult =
       error: string;
     };
 
+const inspectCache = new Map<string, InspectResult>();
+
 /**
  * Creates the unified inspectIntegration tool.
  * Works in both provided and discovery modes.
@@ -87,10 +89,21 @@ Call this BEFORE writing code to understand what the integration can do.`,
       // Check if this is a provided integration (Mock/Test mode)
       const provided = providedIntegrations.find((i) => i.id === integrationId);
       if (provided) {
+        // Check cache for mock integrations
+        const cacheKey = `mock:${provided.id}`;
+        const cached = inspectCache.get(cacheKey);
+        if (cached) {
+          logger.debug(`[InspectIntegration] Cache hit for ${provided.name}`);
+          usedIntegrationIds.add(provided.id);
+          return cached;
+        }
+
+        let result: InspectResult | null = null;
+
         // Direct mock data provided?
         if (provided.type === "mcp" && provided.tools) {
           usedIntegrationIds.add(provided.id);
-          return {
+          result = {
             success: true,
             type: "mcp",
             integrationName: provided.name,
@@ -101,11 +114,9 @@ const client = await integrations.getMcpClient("${provided.name}");
 const result = await client.callTool({ name: "toolName", arguments: { param: "value" } });
 const data = JSON.parse(result.content[0]?.text || "{}");`,
           };
-        }
-
-        if (provided.type === "graphql" && provided.schema) {
+        } else if (provided.type === "graphql" && provided.schema) {
           usedIntegrationIds.add(provided.id);
-          return {
+          result = {
             success: true,
             type: "graphql",
             integrationName: provided.name,
@@ -118,11 +129,9 @@ const result = await client.request(\`query { ... }\`, { variables });
 
 IMPORTANT: Generated GraphQL queries MUST be valid against the schema above.`,
           };
-        }
-
-        if (provided.type === "openapi" && provided.operations) {
+        } else if (provided.type === "openapi" && provided.operations) {
           usedIntegrationIds.add(provided.id);
-          return {
+          result = {
             success: true,
             type: "openapi",
             integrationName: provided.name,
@@ -144,9 +153,7 @@ const created = await client.request("POST", "/users", {}, { name: "John", email
 
 IMPORTANT: The method and path must match one of the operations listed above.`,
           };
-        }
-
-        if (provided.connectionUrl) {
+        } else if (provided.connectionUrl) {
           // Construct a temporary integration object for the mock server
           // This bypasses the DB lookup
           const mockIntegration: any = {
@@ -165,48 +172,49 @@ IMPORTANT: The method and path must match one of the operations listed above.`,
 
           // Handle based on integration type
           if (provided.type === "mcp") {
-            const result = await handleInspectMcp(
+            const inspectResult = await handleInspectMcp(
               mockIntegration,
               mcpContext,
               capturedAuthRequirements
             );
-            if (result.success && result.tools) {
+            if (inspectResult.success && inspectResult.tools) {
               usedIntegrationIds.add(mockIntegration.id);
               logger.debug(
                 `[InspectIntegration] MCP Result for ${mockIntegration.name}:`,
-                JSON.stringify(result.tools, null, 2)
+                JSON.stringify(inspectResult.tools, null, 2)
               );
-              return {
+              result = {
                 success: true,
                 type: "mcp",
                 integrationName: mockIntegration.name,
-                tools: result.tools,
+                tools: inspectResult.tools,
                 usage: `This is an MCP integration. Use integrations.getMcpClient() to get a client:
 
 const client = await integrations.getMcpClient("${mockIntegration.name}");
 const result = await client.callTool({ name: "toolName", arguments: { param: "value" } });
 const data = JSON.parse(result.content[0]?.text || "{}");`,
               };
+            } else {
+              result = { success: false, error: inspectResult.error ?? "Unknown error" };
             }
-            return { success: false, error: result.error ?? "Unknown error" };
           } else if (provided.type === "graphql") {
-            const result = await handleInspectGraphQL(
+            const inspectResult = await handleInspectGraphQL(
               mockIntegration,
               mcpContext,
               capturedAuthRequirements
             );
-            if (result.success && result.schema) {
+            if (inspectResult.success && inspectResult.schema) {
               usedIntegrationIds.add(mockIntegration.id);
               logger.debug(
                 `[InspectIntegration] GraphQL Schema for ${mockIntegration.name}:`,
-                result.schema
+                inspectResult.schema
               );
-              return {
+              result = {
                 success: true,
                 type: "graphql",
                 integrationName: mockIntegration.name,
-                schema: result.schema,
-                schemaFetchedAt: result.schemaFetchedAt!,
+                schema: inspectResult.schema,
+                schemaFetchedAt: inspectResult.schemaFetchedAt!,
                 usage: `This is a GraphQL integration. Use integrations.getGraphQLClient() to get a client:
 
 const client = await integrations.getGraphQLClient("${mockIntegration.name}");
@@ -214,9 +222,18 @@ const result = await client.request(\`query { ... }\`, { variables });
 
 IMPORTANT: Generated GraphQL queries MUST be valid against the schema above.`,
               };
+            } else {
+              result = { success: false, error: inspectResult.error ?? "Unknown error" };
             }
-            return { success: false, error: result.error ?? "Unknown error" };
           }
+        }
+
+        if (result) {
+          // Cache successful results
+          if (result.success) {
+            inspectCache.set(cacheKey, result);
+          }
+          return result;
         }
       }
 

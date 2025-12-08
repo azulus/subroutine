@@ -54,6 +54,9 @@
     "codegen": "deno run --allow-read --allow-write --allow-net --allow-env --allow-sys --node-modules-dir npm:@graphql-codegen/cli@6.0.2/graphql-codegen --config codegen.ts"
   },
   "lint": {
-    "exclude": ["ecosystem.config.cjs"]
+    "exclude": ["ecosystem.config.cjs"],
+    "rules": {
+      "exclude": ["require-await"]
+    }
   }
 }

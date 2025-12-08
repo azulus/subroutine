@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseOpenAPISpec } from "../../integrations/openapi-introspection.ts";
 import {
   getAvailableIntegrations,
   getIntegrationOrGlobal,
@@ -8,9 +9,12 @@ import {
 import { getLogger } from "../../utils/logger.ts";
 import type { IntegrationInfo } from "../prompts/index.ts";
 import type { McpContext, SubroutineCapture } from "../utils/types.ts";
+import type {
+  GraphQLIntegrationSchema,
+  OpenAPIIntegrationSchema,
+  ValidationContext,
+} from "../validation/types.ts";
 import { validateCode } from "../validation/validator.ts";
-import type { GraphQLIntegrationSchema, OpenAPIIntegrationSchema, ValidationContext } from "../validation/types.ts";
-import { parseOpenAPISpec } from "../../integrations/openapi-introspection.ts";
 const logger = getLogger("api/agent/tools/write-code.ts", "debug");
 
 type GenerateSubroutineOptions = {
@@ -87,7 +91,11 @@ const buildValidationContext = async (
     // Discovery mode: fetch all available integrations
     const integrations = await getAvailableIntegrations(options.mcpContext.organizationId, "all");
     const enabledIntegrations = integrations.filter(
-      (i) => i.enabled && (i.authConfig.type === "mcp" || i.authConfig.type === "graphql" || i.authConfig.type === "openapi")
+      (i) =>
+        i.enabled &&
+        (i.authConfig.type === "mcp" ||
+          i.authConfig.type === "graphql" ||
+          i.authConfig.type === "openapi")
     );
 
     if (enabledIntegrations.length > 0) {
@@ -176,6 +184,7 @@ export const createWriteCodeTool = (
       const validationContext = await buildValidationContext(options);
       logger.info(`Validating code with context: ${JSON.stringify(validationContext)}`);
       const validation = await validateCode(code, validationContext);
+      logger.info(`Finished validating code`);
 
       if (!validation.valid) {
         const errorMessages = validation.errors.map((e) =>

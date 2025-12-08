@@ -1,7 +1,7 @@
-import { Project, ts } from "ts-morph";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ValidationError } from "./types";
+import { Project, ts } from "ts-morph";
+import type { ValidationError } from "./types.ts";
 
 let typeCheckProject: Project | null = null;
 
@@ -97,4 +97,11 @@ export const typeCheckCode = (code: string): TypeCheckResult => {
  */
 export const resetTypeCheckProject = (): void => {
   typeCheckProject = null;
+};
+
+/**
+ * Initialize the type checker project if it hasn't been initialized yet.
+ */
+export const bootstrapTypeChecker = (): void => {
+  getProject();
 };

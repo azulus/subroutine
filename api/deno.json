@@ -62,6 +62,9 @@
     "graphql:schema": "bash scripts/wait-for-api.sh && npx --yes -p @graphql-codegen/cli@6.0.2 -p @graphql-codegen/schema-ast@5.0.0 graphql-codegen --config ./codegen.yml"
   },
   "lint": {
-    "exclude": ["ecosystem.config.js"]
+    "exclude": ["ecosystem.config.js"],
+    "rules": {
+      "exclude": ["require-await"]
+    }
   }
 }
